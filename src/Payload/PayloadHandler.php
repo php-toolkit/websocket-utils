@@ -2,14 +2,15 @@
 
 namespace MyLib\WebSocket\Util\Payload;
 
-use Inhere\Library\StdObject;
 use InvalidArgumentException;
-use Wrench\Exception\PayloadException;
+use MyLib\ObjUtil\Obj;
+use MyLib\PhpUtil\PhpHelper;
+use MyLib\WebSocket\Util\Exception\PayloadException;
 
 /**
  * Handles chunking and splitting of payloads into frames
  */
-class PayloadHandler extends StdObject
+class PayloadHandler
 {
     /**
      * A callback that will be called when a complete payload is available
@@ -20,6 +21,7 @@ class PayloadHandler extends StdObject
 
     /**
      * The current payload
+     * @var Payload
      */
     protected $payload;
 
@@ -30,7 +32,7 @@ class PayloadHandler extends StdObject
      */
     public function __construct(callable $callback, array $options = [])
     {
-        parent::__construct($options);
+        Obj::init($this, $options);
 
         $this->callback = $callback;
     }
@@ -49,6 +51,7 @@ class PayloadHandler extends StdObject
 
         while ($data) { // Each iteration pulls off a single payload chunk
             $size = \strlen($data);
+            $chunkSize = 0;
             $remaining = $this->payload->getRemainingData();
 
             // If we don't yet know how much data is remaining, read data into
@@ -91,7 +94,7 @@ class PayloadHandler extends StdObject
      */
     protected function emit(Payload $payload)
     {
-        \call_user_func($this->callback, $payload);
+        PhpHelper::call($this->callback, $payload);
     }
 
     /**

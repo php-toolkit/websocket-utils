@@ -65,7 +65,7 @@ class HybiFrame extends Frame
      */
     public function encode($payload, $type = Protocol::TYPE_TEXT, $masked = false)
     {
-        if (!\is_int($type) || !\in_array($type, Protocol::FRAME_TYPES)) {
+        if (!\is_int($type) || !in_array($type, Protocol::FRAME_TYPES, true)) {
             throw new InvalidArgumentException('Invalid frame type');
         }
 
@@ -292,39 +292,47 @@ class HybiFrame extends Frame
      * @return bool
      * @throws FrameException
      */
-    public function isFinal()
+    public function isFinal(): bool
     {
         if (!isset($this->buffer[self::BYTE_HEADER])) {
             throw new FrameException('Cannot yet tell if frame is final');
         }
 
-        return (boolean)(\ord($this->buffer[self::BYTE_HEADER]) & self::BITFIELD_FINAL);
+        return (bool)(\ord($this->buffer[self::BYTE_HEADER]) & self::BITFIELD_FINAL);
     }
 
     /**
      * @throws FrameException
      */
-    public function getType()
+    public function getType(): int
     {
         if (!isset($this->buffer[self::BYTE_HEADER])) {
             throw new FrameException('Cannot yet tell type of frame');
         }
 
-        $type = (int)(\ord($this->buffer[self::BYTE_HEADER]) & self::BITFIELD_TYPE);
+        $type = (\ord($this->buffer[self::BYTE_HEADER]) & self::BITFIELD_TYPE);
 
-        if (!\in_array($type, Protocol::FRAME_TYPES)) {
+        if (!in_array($type, Protocol::FRAME_TYPES, true)) {
             throw new FrameException('Invalid payload type');
         }
 
         return $type;
     }
 
-    protected function getExpectedBufferLength()
+    /**
+     * @return int
+     * @throws FrameException
+     */
+    protected function getExpectedBufferLength(): int
     {
         return $this->getLength() + $this->getPayloadOffset();
     }
 
-    public function getLength()
+    /**
+     * @return int
+     * @throws FrameException
+     */
+    public function getLength(): int
     {
         if (!$this->length) {
             $initial = $this->getInitialLength();
@@ -353,6 +361,9 @@ class HybiFrame extends Frame
         return $this->length;
     }
 
+    /**
+     * @throws FrameException
+     */
     protected function decodeFramePayloadFromBuffer()
     {
         $payload = substr($this->buffer, $this->getPayloadOffset());

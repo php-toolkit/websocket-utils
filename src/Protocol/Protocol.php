@@ -3,9 +3,9 @@
 namespace MyLib\WebSocket\Util\Protocol;
 
 use Exception;
-use InvalidArgumentException;
-use Inhere\WebSocket\Helpers\Exceptions\BadRequestException;
-use Inhere\WebSocket\Helpers\Exceptions\HandshakeException;
+use MyLib\WebSocket\Util\Exception\BadRequestException;
+use MyLib\WebSocket\Util\Exception\HandshakeException;
+use MyLib\WebSocket\Util\Payload\Payload;
 
 /**
  * Definitions and implementation helpers for the Wrenchs protocol
@@ -210,6 +210,7 @@ abstract class Protocol
      * This base implementation returns a 16-byte (128 bit) random key as a
      * binary string.
      * @return string
+     * @throws Exception
      */
     public function generateKey(): string
     {
@@ -217,10 +218,10 @@ abstract class Protocol
             $key = openssl_random_pseudo_bytes(16);
         } else {
             // SHA1 is 128 bit (= 16 bytes)
-            $key = sha1(spl_object_hash($this) . mt_rand(0, PHP_INT_MAX) . uniqid('', true), true);
+            $key = sha1(spl_object_hash($this) . random_int(0, PHP_INT_MAX) . uniqid('', true), true);
         }
 
-        return base64_encode($key);
+        return \base64_encode($key);
     }
 
     /**
@@ -238,6 +239,7 @@ abstract class Protocol
      * @param string $origin Origin of the request
      * @param array $headers
      * @return string
+     * @throws \InvalidArgumentException
      */
     public function getRequestHandshake(
         $uri,
@@ -246,18 +248,18 @@ abstract class Protocol
         array $headers = []
     ): string {
         if (!$uri || !$key || !$origin) {
-            throw new InvalidArgumentException('You must supply a URI, key and origin');
+            throw new \InvalidArgumentException('You must supply a URI, key and origin');
         }
 
-        list($scheme, $host, $port, $path, $query) = self::validateUri($uri);
+        list($scheme, $host, $port, $path, $query) = $this->validateUri($uri);
 
         if ($query) {
             $path .= '?' . $query;
         }
 
-        if ($scheme == self::SCHEME_WEBSOCKET && $port == 80) {
+        if ($scheme === self::SCHEME_WEBSOCKET && $port === 80) {
             // do nothing
-        } elseif ($scheme == self::SCHEME_WEBSOCKET_SECURE && $port == 443) {
+        } elseif ($scheme === self::SCHEME_WEBSOCKET_SECURE && $port === 443) {
             // do nothing
         } else {
             $host = $host . ':' . $port;
@@ -287,12 +289,13 @@ abstract class Protocol
      * Validates a WebSocket URI
      * @param string $uri
      * @return array(string $scheme, string $host, int $port, string $path)
+     * @throws \InvalidArgumentException
      */
     public function validateUri($uri): array
     {
         $uri = (string)$uri;
         if (!$uri) {
-            throw new InvalidArgumentException('Invalid URI');
+            throw new \InvalidArgumentException('Invalid URI');
         }
 
         $scheme = parse_url($uri, PHP_URL_SCHEME);
@@ -300,7 +303,7 @@ abstract class Protocol
 
         $host = parse_url($uri, PHP_URL_HOST);
         if (!$host) {
-            throw new InvalidArgumentException('Invalid host');
+            throw new \InvalidArgumentException('Invalid host');
         }
 
         $port = parse_url($uri, PHP_URL_PORT);
@@ -310,27 +313,27 @@ abstract class Protocol
 
         $path = parse_url($uri, PHP_URL_PATH);
         if (!$path) {
-            throw new InvalidArgumentException('Invalid path');
+            throw new \InvalidArgumentException('Invalid path');
         }
 
         $query = parse_url($uri, PHP_URL_QUERY);
 
-        return [$scheme, $host, $port, $path, $query];
+        return [$scheme, $host, (int)$port, $path, $query];
     }
 
     /**
      * Validates a scheme
      * @param string $scheme
      * @return string Underlying scheme
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
     protected function validateScheme($scheme): string
     {
         if (!$scheme) {
-            throw new InvalidArgumentException('No scheme specified');
+            throw new \InvalidArgumentException('No scheme specified');
         }
         if (!\in_array($scheme, self::$schemes, true)) {
-            throw new InvalidArgumentException(
+            throw new \InvalidArgumentException(
                 'Unknown socket scheme: ' . $scheme
             );
         }
@@ -349,20 +352,27 @@ abstract class Protocol
      *  Transport Layer Security
      * @param string|false $scheme
      * @return int
+     * @throws \InvalidArgumentException
      */
-    protected function getPort($scheme)
+    protected function getPort($scheme): int
     {
         if ($scheme === self::SCHEME_WEBSOCKET) {
             return 80;
-        } elseif ($scheme === self::SCHEME_WEBSOCKET_SECURE) {
-            return 443;
-        } elseif ($scheme === self::SCHEME_UNDERLYING) {
-            return 80;
-        } elseif ($scheme === self::SCHEME_UNDERLYING_SECURE) {
-            return 443;
-        } else {
-            throw new InvalidArgumentException('Unknown websocket scheme');
         }
+
+        if ($scheme === self::SCHEME_WEBSOCKET_SECURE) {
+            return 443;
+        }
+
+        if ($scheme === self::SCHEME_UNDERLYING) {
+            return 80;
+        }
+
+        if ($scheme === self::SCHEME_UNDERLYING_SECURE) {
+            return 443;
+        }
+
+        throw new \InvalidArgumentException('Unknown websocket scheme');
     }
 
     /**
@@ -386,9 +396,9 @@ abstract class Protocol
 
     /**
      * Gets a version number
-     * @return
+     * @return int
      */
-    abstract public function getVersion();
+    abstract public function getVersion(): int ;
 
     /**
      * Gets a handshake response body
@@ -487,6 +497,8 @@ abstract class Protocol
      * @param string $response
      * @param string $key
      * @return bool
+     * @throws \InvalidArgumentException
+     * @throws HandshakeException
      */
     public function validateResponseHandshake($response, $key): bool
     {
@@ -497,7 +509,7 @@ abstract class Protocol
         $headers = $this->getHeaders($response);
 
         if (!isset($headers[self::HEADER_ACCEPT])) {
-            throw new HandshakeException('No accept header receieved on handshake response');
+            throw new HandshakeException('No accept header received on handshake response');
         }
 
         $accept = $headers[self::HEADER_ACCEPT];
@@ -518,7 +530,7 @@ abstract class Protocol
      * Gets the headers from a full response
      * @param string $response
      * @return array()
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
     protected function getHeaders($response, &$request_line = null): array
     {
@@ -661,14 +673,14 @@ abstract class Protocol
      * @param string $response
      * @return array<string, array<string>> The request line, and an array of
      *             headers
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
     protected function getRequestHeaders($response): array
     {
         $eol = stripos($response, "\r\n");
 
         if ($eol === false) {
-            throw new InvalidArgumentException('Invalid request line');
+            throw new \InvalidArgumentException('Invalid request line');
         }
 
         $request = substr($response, 0, $eol);
@@ -710,7 +722,7 @@ abstract class Protocol
      * @param boolean $masked
      * @return Payload
      */
-    public function getClosePayload($e, $masked = true): \MyLib\WebSocket\Util\Payload\Payload
+    public function getClosePayload($e, $masked = true): Payload
     {
         $code = false;
 
@@ -741,21 +753,21 @@ abstract class Protocol
     /**
      * Validates a socket URI
      * @param string $uri
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      * @return array(string $scheme, string $host, string $port)
      */
     public function validateSocketUri($uri): array
     {
         $uri = (string)$uri;
         if (!$uri) {
-            throw new InvalidArgumentException('Invalid URI');
+            throw new \InvalidArgumentException('Invalid URI');
         }
 
         $scheme = parse_url($uri, PHP_URL_SCHEME);
         $scheme = $this->validateScheme($scheme);
 
         if (!$host = parse_url($uri, PHP_URL_HOST)) {
-            throw new InvalidArgumentException('Invalid host');
+            throw new \InvalidArgumentException('Invalid host');
         }
 
         if (!$port = parse_url($uri, PHP_URL_PORT)) {
@@ -768,24 +780,24 @@ abstract class Protocol
     /**
      * Validates an origin URI
      * @param string $origin
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      * @return string
      */
     public function validateOriginUri($origin): string
     {
         $origin = (string)$origin;
         if (!$origin) {
-            throw new InvalidArgumentException('Invalid URI');
+            throw new \InvalidArgumentException('Invalid URI');
         }
 
         $scheme = parse_url($origin, PHP_URL_SCHEME);
         if (!$scheme) {
-            throw new InvalidArgumentException('Invalid scheme');
+            throw new \InvalidArgumentException('Invalid scheme');
         }
 
         $host = parse_url($origin, PHP_URL_HOST);
         if (!$host) {
-            throw new InvalidArgumentException('Invalid host');
+            throw new \InvalidArgumentException('Invalid host');
         }
 
         return $origin;

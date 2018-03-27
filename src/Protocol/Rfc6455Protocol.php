@@ -1,6 +1,6 @@
 <?php
 
-namespace Wrench\Protocol;
+namespace MyLib\WebSocket\Util\Protocol;
 
 /**
  * This is the version of websockets used by Chrome versions 17 through 19.

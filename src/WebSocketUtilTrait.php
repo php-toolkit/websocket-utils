@@ -10,7 +10,7 @@ namespace MyLib\WebSocket\Util;
 
 use inhere\console\io\Input;
 use inhere\console\io\Output;
-use Inhere\Library\Helpers\Cli;
+use MyLib\SysUtil\Cli;
 use Inhere\Library\Traits\FixedEventTrait;
 use Inhere\Library\Traits\ConfigTrait;
 use Psr\Log\LoggerInterface;

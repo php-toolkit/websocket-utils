@@ -12,7 +12,7 @@ class Hybi10Protocol extends HybiProtocol
     /**
      * @see Protocol::getVersion()
      */
-    public function getVersion(): string
+    public function getVersion(): int
     {
         return self::VERSION;
     }

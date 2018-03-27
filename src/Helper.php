@@ -45,7 +45,7 @@ class Helper
      * @param $buffer
      * @return string
      */
-    public static function decode($buffer)
+    public static function decode($buffer): string
     {
         /*$len = $masks = $data =*/
         $decoded = '';

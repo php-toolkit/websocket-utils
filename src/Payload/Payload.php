@@ -56,7 +56,7 @@ abstract class Payload
      *
      * @return Frame
      */
-    abstract protected function getFrame();
+    abstract protected function getFrame(): Frame;
 
     /**
      * Whether this payload is waiting for more data

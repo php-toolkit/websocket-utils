@@ -115,7 +115,7 @@ class DataHelper
                 if ($user->hasSentClose) {
                     $this->disconnect($user->socket);
                 } else {
-                    if ((preg_match('//u', $message)) || ($headers['opcode'] == 2)) {
+                    if (((int)$headers['opcode'] === 2) || preg_match('//u', $message)) {
                         //$this->stdout("Text msg encoded UTF-8 or Binary msg\n".$message);
                         $this->process($user, $message);
                     } else {
